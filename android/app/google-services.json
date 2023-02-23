@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "43084266294",
+    "project_id": "qrattendance-proto",
+    "storage_bucket": "qrattendance-proto.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:43084266294:android:c6533c09bbf8f5b7c65197",
+        "android_client_info": {
+          "package_name": "com.example.qratt"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "43084266294-gmb0o3q378tmbnd9ffv4j4m4ehklk725.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD82gQ2xmTZacfFjG5lOfJcVw1EqfCbEeQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "43084266294-gmb0o3q378tmbnd9ffv4j4m4ehklk725.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "43084266294-bm393qk88cape2egcb88b1lb2rr4k54m.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.qratt"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

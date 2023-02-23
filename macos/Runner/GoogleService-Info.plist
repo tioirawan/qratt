@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>43084266294-bm393qk88cape2egcb88b1lb2rr4k54m.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.43084266294-bm393qk88cape2egcb88b1lb2rr4k54m</string>
+	<key>API_KEY</key>
+	<string>AIzaSyBu35GfkKAizKMzMRF9CYoeSRW3PYaIctI</string>
+	<key>GCM_SENDER_ID</key>
+	<string>43084266294</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.example.qratt</string>
+	<key>PROJECT_ID</key>
+	<string>qrattendance-proto</string>
+	<key>STORAGE_BUCKET</key>
+	<string>qrattendance-proto.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:43084266294:ios:55c9ad532ea30ac3c65197</string>
+</dict>
+</plist>
