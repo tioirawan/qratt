@@ -261,11 +261,10 @@ class AttendanceResponseList extends StatelessWidget {
         return ListView.separated(
           shrinkWrap: shrinkWrap,
           physics: physics,
-          itemCount: (snapshot.data?.docs.length ?? 0) * 5,
+          itemCount: (snapshot.data?.docs.length ?? 0),
           padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 32),
           itemBuilder: (BuildContext context, int index) {
-            final response =
-                snapshot.data!.docs[index % snapshot.data!.docs.length];
+            final response = snapshot.data!.docs[index];
 
             return Entry.offset(
               key: ValueKey(response.id),
