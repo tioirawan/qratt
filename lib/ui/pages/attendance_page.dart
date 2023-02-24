@@ -1,10 +1,13 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:entry/entry.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:uuid/uuid.dart';
+
+import '../widgets/square_progress_painter.dart';
 
 class AttendancePage extends StatefulWidget {
   final String attendanceId;
@@ -18,9 +21,10 @@ class AttendancePage extends StatefulWidget {
 
 class _AttendancePageState extends State<AttendancePage> {
   late Timer _timer;
+  late Timer _counterTimer;
   Map<String, dynamic> _attendance = {};
 
-  final int refreshInterval = 10;
+  final int refreshInterval = 15;
 
   // stream controller for timer
   final StreamController<int> _timerStreamController =
@@ -59,7 +63,7 @@ class _AttendancePageState extends State<AttendancePage> {
   }
 
   void _initRefreshTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 10), (timer) async {
+    _timer = Timer.periodic(Duration(seconds: refreshInterval), (timer) async {
       final newSecret = const Uuid().v4();
 
       await docRef.update({
@@ -72,7 +76,7 @@ class _AttendancePageState extends State<AttendancePage> {
   }
 
   void _initDisplayTimer() {
-    Timer.periodic(const Duration(seconds: 1), (timer) {
+    _counterTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       final remaining =
           (refreshInterval - (timer.tick % refreshInterval)).abs();
       _timerStreamController.add(remaining);
@@ -82,6 +86,7 @@ class _AttendancePageState extends State<AttendancePage> {
   @override
   void dispose() {
     _timer.cancel();
+    _counterTimer.cancel();
     _timerStreamController.close();
     super.dispose();
   }
@@ -89,23 +94,36 @@ class _AttendancePageState extends State<AttendancePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Attendance'),
-      ),
       body: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth > 600) {
             // Wide screen layout
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            return Stack(
               children: [
-                Expanded(
-                  flex: 2,
-                  child: _buildQrCode(),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: _buildQrCode(),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: attendanceList,
+                    ),
+                  ],
                 ),
-                Expanded(
-                  flex: 3,
-                  child: attendanceList,
+                Positioned(
+                  top: 32,
+                  left: 32,
+                  child: IconButton(
+                    color: Theme.of(context).colorScheme.primary,
+                    iconSize: 32,
+                    icon: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
                 ),
               ],
             );
@@ -115,6 +133,7 @@ class _AttendancePageState extends State<AttendancePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  AppBar(),
                   _buildQrCode(),
                   mobileAttendanceList,
                 ],
@@ -132,24 +151,71 @@ class _AttendancePageState extends State<AttendancePage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          QrImage(
-            data: '${widget.attendanceId}#${_attendance['secret']}',
-            size: 400,
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: StreamBuilder(
+                stream: _timerStreamController.stream,
+                builder: (context, snapshot) => TweenAnimationBuilder(
+                  duration: const Duration(seconds: 1),
+                  tween: Tween<double>(
+                    begin: 0,
+                    end: snapshot.data == null
+                        ? 0
+                        : (snapshot.data! - 1) / refreshInterval,
+                  ),
+                  builder: (context, value, child) => CustomPaint(
+                    painter: SquareProgressPainter(
+                      color: ColorTween(
+                            begin: const Color.fromARGB(255, 244, 54, 54),
+                            end: const Color.fromARGB(255, 26, 255, 34),
+                          ).lerp(value) ??
+                          Colors.blue,
+                      percentage: value,
+                    ),
+                    child: child,
+                  ),
+                  child: QrImage(
+                    data: '${widget.attendanceId}#${_attendance['secret']}',
+                    size: double.infinity,
+                    embeddedImage: const AssetImage('assets/images/logo.png'),
+                  ),
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 16),
           // listen to timer stream
-          StreamBuilder(
-            stream: _timerStreamController.stream,
-            builder: (context, snapshot) {
-              return Text(snapshot.data == null
-                  ? 'Refreshing in ${refreshInterval}s'
-                  : 'Refreshing in ${snapshot.data}s');
-            },
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            "Open qrattendance-proto.web.app on you phone and scan the QR code above to submit your attendance.",
-            textAlign: TextAlign.center,
+          // StreamBuilder(
+          //   stream: _timerStreamController.stream,
+          //   builder: (context, snapshot) {
+          //     return Text(snapshot.data == null
+          //         ? 'Refreshing in ${refreshInterval}s'
+          //         : 'Refreshing in ${snapshot.data}s');
+          //   },
+          // ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
+            child: RichText(
+              textAlign: TextAlign.center,
+              text: TextSpan(
+                children: [
+                  const TextSpan(text: "Open "),
+                  TextSpan(
+                    text: "qrattendance-proto.web.app",
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const TextSpan(
+                    text:
+                        " and scan the QR code above to submit your attendance.",
+                  )
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -174,7 +240,6 @@ class AttendanceResponseList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print("rebuilding");
     return StreamBuilder<QuerySnapshot>(
       stream: docRef
           .collection('responses')
@@ -193,22 +258,56 @@ class AttendanceResponseList extends StatelessWidget {
           return const Center(child: Text('No attendance response yet.'));
         }
 
-        return ListView.builder(
+        return ListView.separated(
           shrinkWrap: shrinkWrap,
           physics: physics,
-          itemCount: snapshot.data?.docs.length ?? 0,
+          itemCount: (snapshot.data?.docs.length ?? 0) * 5,
+          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 32),
           itemBuilder: (BuildContext context, int index) {
-            final response = snapshot.data!.docs[index];
+            final response =
+                snapshot.data!.docs[index % snapshot.data!.docs.length];
 
-            return ListTile(
-              title: Text(response['name']),
-              subtitle: Text(response['nim'] + ' - ' + response['classroom']),
-              trailing: Text(
-                DateFormat('dd MMMM yyyy, hh:mm a')
-                    .format(response['timestamp'].toDate()),
+            return Entry.offset(
+              key: ValueKey(response.id),
+              xOffset: 100,
+              delay: Duration(milliseconds: 100 * index),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  color: Colors.grey[200],
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          response['name'],
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const Spacer(),
+                        Text(
+                          DateFormat('hh:mm a').format(
+                            response['timestamp'].toDate(),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      response['nim'] + ' - ' + response['classroom'],
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ],
+                ),
               ),
             );
           },
+          separatorBuilder: (BuildContext context, int index) => const SizedBox(
+            height: 12,
+          ),
         );
       },
     );
