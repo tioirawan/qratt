@@ -179,7 +179,9 @@ class _AttendancePageState extends State<AttendancePage> {
                   child: QrImage(
                     data: '${widget.attendanceId}#${_attendance['secret']}',
                     size: double.infinity,
-                    embeddedImage: const AssetImage('assets/images/logo.png'),
+                    embeddedImage: const AssetImage(
+                      'assets/images/logo_white_bg.png',
+                    ),
                   ),
                 ),
               ),
