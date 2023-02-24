@@ -1,10 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:reactive_forms/reactive_forms.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../widgets/drawer.dart';
+import 'scanner_page.dart';
 
 class FormPage extends StatefulWidget {
   const FormPage({super.key});
@@ -14,16 +14,14 @@ class FormPage extends StatefulWidget {
 }
 
 class _FormPageState extends State<FormPage> {
-  final qrKey = MobileScannerController(facing: CameraFacing.back);
+  final _form = FormGroup({
+    'name': FormControl<String>(validators: [Validators.required]),
+    'nim': FormControl<String>(validators: [Validators.required]),
+    'classroom': FormControl<String>(validators: [Validators.required]),
+  });
 
-  TextEditingController nameController = TextEditingController();
-  TextEditingController nimController = TextEditingController();
-  TextEditingController classroomController = TextEditingController();
-
-  String? qrResult;
   SharedPreferences? _prefs;
   bool _formFilled = false;
-  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -34,19 +32,20 @@ class _FormPageState extends State<FormPage> {
   void _loadDataFromLocalStorage() async {
     _prefs = await SharedPreferences.getInstance();
     setState(() {
-      nameController.text = _prefs?.getString('name') ?? '';
-      nimController.text = _prefs?.getString('nim') ?? '';
-      classroomController.text = _prefs?.getString('classroom') ?? '';
+      _form.control('name').value = _prefs?.getString('name') ?? '';
+      _form.control('nim').value = _prefs?.getString('nim') ?? '';
+      _form.control('classroom').value = _prefs?.getString('classroom') ?? '';
 
-      _checkFormFilled('');
+      _checkFormFilled();
     });
   }
 
   void _saveDataToLocalStorage() async {
     _prefs = await SharedPreferences.getInstance();
-    _prefs?.setString('name', nameController.text);
-    _prefs?.setString('nim', nimController.text);
-    _prefs?.setString('classroom', classroomController.text);
+
+    _prefs?.setString('name', _form.control('name').value);
+    _prefs?.setString('nim', _form.control('nim').value);
+    _prefs?.setString('classroom', _form.control('classroom').value);
   }
 
   @override
@@ -54,102 +53,84 @@ class _FormPageState extends State<FormPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Absensi QR'),
+        centerTitle: true,
       ),
       drawer: const AppDrawer(),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 300),
-              child: AspectRatio(
-                aspectRatio: 1 / 1,
-                child: _formFilled
-                    ? _buildQRScannerWidget()
-                    : Container(
-                        color: Colors.grey,
-                        width: double.infinity,
-                        alignment: Alignment.center,
-                        child: const Text(
-                          'Please fill the form to submit attendance or open the drawer to create a new attendance activity',
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-              ),
-            ),
-            const SizedBox(
-              height: 20,
-            ),
-            _buildFormWidget()
-          ],
+      body: CustomScrollView(slivers: [
+        SliverToBoxAdapter(child: _buildFormWidget()),
+        const SliverFillRemaining(
+          hasScrollBody: false,
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: Text("Built with ❤️ by @WRI"),
+          ),
         ),
-      ),
+      ]),
     );
   }
 
   Widget _buildFormWidget() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
-            controller: nameController,
-            decoration: const InputDecoration(labelText: 'Name'),
-            onChanged: _checkFormFilled,
-          ),
-          TextField(
-            controller: nimController,
-            decoration: const InputDecoration(labelText: 'NIM'),
-            onChanged: _checkFormFilled,
-          ),
-          TextField(
-            controller: classroomController,
-            decoration: const InputDecoration(labelText: 'Classroom'),
-            onChanged: _checkFormFilled,
-          ),
-        ],
+      child: ReactiveForm(
+        formGroup: _form,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 150),
+              child: AspectRatio(
+                aspectRatio: 1 / 1,
+                child: Image.asset('assets/images/logo.png'),
+              ),
+            ),
+            const SizedBox(height: 32),
+            ReactiveTextField(
+              formControlName: 'name',
+              decoration: const InputDecoration(
+                labelText: 'Name',
+              ),
+              onChanged: _checkFormFilled,
+            ),
+            const SizedBox(height: 16),
+            ReactiveTextField(
+              formControlName: 'nim',
+              decoration: const InputDecoration(labelText: 'NIM'),
+              onChanged: _checkFormFilled,
+            ),
+            const SizedBox(height: 16),
+            ReactiveTextField(
+              formControlName: 'classroom',
+              decoration: const InputDecoration(labelText: 'Classroom'),
+              onChanged: _checkFormFilled,
+            ),
+            const SizedBox(height: 24),
+            ReactiveFormBuilder(
+              form: () => _form,
+              builder: (context, form, child) => ElevatedButton(
+                onPressed:
+                    form.valid ? () => _openScanner(context, form) : null,
+                child: const Text(
+                  "Open QR Scanner",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildQRScannerWidget() {
-    return MobileScanner(
-      // fit: BoxFit.contain,
-      controller: qrKey,
-      onDetect: _onQrDetect,
-    );
-  }
-
-  void _onQrDetect(capture) {
-    final Barcode barcodes = capture.barcodes.first;
-    final List<String> data = barcodes.rawValue?.split('#') ?? [];
-
-    if (data.length != 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid QR Code'),
-        ),
-      );
-      return;
-    }
-
-    final docId = data[0];
-    final secret = data[1];
-
-    _submitAttendanceToFirestore(docId, secret);
-  }
-
-  void _checkFormFilled(String _) {
+  void _checkFormFilled([FormControl? control]) {
     _saveDataToLocalStorage();
 
-    if (nameController.text.isNotEmpty &&
-        nimController.text.isNotEmpty &&
-        classroomController.text.isNotEmpty) {
-      if (!_formFilled) {
-        setState(() {
-          _formFilled = true;
-        });
-      }
+    if (_form.valid && !_formFilled) {
+      setState(() {
+        _formFilled = true;
+      });
 
       return;
     }
@@ -161,78 +142,22 @@ class _FormPageState extends State<FormPage> {
     }
   }
 
-  void _submitAttendanceToFirestore(String docId, String secret) async {
-    if (_isSubmitting) return;
-
-    setState(() {
-      _isSubmitting = true;
-    });
-
-    try {
-      final firestore = FirebaseFirestore.instance;
-      final docRef = firestore.collection("attendances").doc(docId);
-
-      final doc = await docRef.get();
-
-      if (doc.exists) {
-        final data = doc.data();
-        if (data != null && data['secret'] == secret) {
-          final attendance = await docRef
-              .collection("responses")
-              .where('uid', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
-              .get();
-
-          if (attendance.docs.isEmpty) {
-            final data = {
-              'uid': FirebaseAuth.instance.currentUser!.uid,
-              'name': nameController.text,
-              'nim': nimController.text,
-              'classroom': classroomController.text,
-              'timestamp': Timestamp.now(),
-            };
-
-            await docRef.collection("responses").add(data);
-
-            if (context.mounted) {
-              alert('Attendance submitted');
-            }
-          } else {
-            if (context.mounted) {
-              alert('Attendance already submitted');
-            }
-          }
-        } else {
-          if (context.mounted) {
-            alert('Invalid QR Code');
-          }
-        }
-      }
-    } on Exception {
-      if (context.mounted) {
-        alert('Something went wrong');
-      }
-    } finally {
-      setState(() {
-        _isSubmitting = false;
-      });
-    }
-  }
-
-  void alert(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(text),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   @override
   void dispose() {
-    nameController.dispose();
-    nimController.dispose();
-    classroomController.dispose();
-    qrKey.dispose();
+    _form.dispose();
     super.dispose();
+  }
+
+  _openScanner(BuildContext context, FormGroup form) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ScannerPage(
+          uid: FirebaseAuth.instance.currentUser!.uid,
+          name: form.control('name').value,
+          nim: form.control('nim').value,
+          classroom: form.control('classroom').value,
+        ),
+      ),
+    );
   }
 }

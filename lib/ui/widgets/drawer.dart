@@ -188,7 +188,6 @@ class _AppDrawerState extends State<AppDrawer> {
         }
       }
     } catch (e) {
-      debugPrint(e.toString());
       if (context.mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
