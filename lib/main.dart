@@ -29,6 +29,7 @@ class MyApp extends StatelessWidget {
         textTheme: GoogleFonts.poppinsTextTheme(
           Theme.of(context).textTheme,
         ),
+        scaffoldBackgroundColor: const Color(0xFFFCFBF9),
         appBarTheme: const AppBarTheme(
           color: Colors.transparent,
           foregroundColor: Color(0xFFF7B319),
