@@ -2,9 +2,12 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:entry/entry.dart';
+import 'package:excel/excel.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:universal_html/html.dart' as html;
 import 'package:uuid/uuid.dart';
 
 import '../widgets/square_progress_painter.dart';
@@ -51,35 +54,6 @@ class _AttendancePageState extends State<AttendancePage> {
       await _refreshData();
       _initRefreshTimer();
       _initDisplayTimer();
-    });
-  }
-
-  Future<void> _refreshData() async {
-    final data = await docRef.get();
-
-    setState(() {
-      _attendance = data.data() ?? {};
-    });
-  }
-
-  void _initRefreshTimer() {
-    _timer = Timer.periodic(Duration(seconds: refreshInterval), (timer) async {
-      final newSecret = const Uuid().v4();
-
-      await docRef.update({
-        'secret': newSecret,
-      });
-
-      _refreshData();
-      _timerStreamController.add(refreshInterval);
-    });
-  }
-
-  void _initDisplayTimer() {
-    _counterTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      final remaining =
-          (refreshInterval - (timer.tick % refreshInterval)).abs();
-      _timerStreamController.add(remaining);
     });
   }
 
@@ -187,16 +161,7 @@ class _AttendancePageState extends State<AttendancePage> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          // listen to timer stream
-          // StreamBuilder(
-          //   stream: _timerStreamController.stream,
-          //   builder: (context, snapshot) {
-          //     return Text(snapshot.data == null
-          //         ? 'Refreshing in ${refreshInterval}s'
-          //         : 'Refreshing in ${snapshot.data}s');
-          //   },
-          // ),
+          const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32.0),
             child: RichText(
@@ -212,16 +177,106 @@ class _AttendancePageState extends State<AttendancePage> {
                     ),
                   ),
                   const TextSpan(
-                    text:
-                        " and scan the QR code above to submit your attendance.",
+                    text: " to submit your attendance.",
                   )
                 ],
               ),
             ),
           ),
+          if (kIsWeb) ...[
+            const SizedBox(height: 18),
+            ElevatedButton.icon(
+              onPressed: _exportCollectionToExcel,
+              icon: const Icon(Icons.download_rounded),
+              label: const Text("Export to Excel"),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  Future<void> _refreshData() async {
+    final data = await docRef.get();
+
+    setState(() {
+      _attendance = data.data() ?? {};
+    });
+  }
+
+  void _initRefreshTimer() {
+    _timer = Timer.periodic(Duration(seconds: refreshInterval), (timer) async {
+      final newSecret = const Uuid().v4();
+
+      await docRef.update({
+        'secret': newSecret,
+      });
+
+      _refreshData();
+      _timerStreamController.add(refreshInterval);
+    });
+  }
+
+  void _initDisplayTimer() {
+    _counterTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      final remaining =
+          (refreshInterval - (timer.tick % refreshInterval)).abs();
+      _timerStreamController.add(remaining);
+    });
+  }
+
+  Future<void> _exportCollectionToExcel() async {
+    // Get the Firestore collection reference
+    final collectionRef = FirebaseFirestore.instance
+        .collection('attendances')
+        .doc(widget.attendanceId)
+        .collection('responses');
+
+    final snapshot = await collectionRef.get();
+
+    if (snapshot.docs.isEmpty) return;
+
+    final excel = Excel.createExcel();
+    final sheetObject = excel['Sheet1'];
+
+    const fieldNames = ["nim", "name", "classroom", "timestamp"];
+    const header = ["NIM", "Nama", "Kelas", "Waktu"];
+
+    // Add the header row to the sheet
+    sheetObject.appendRow(header);
+
+    // Add the data rows to the sheet
+    for (final doc in snapshot.docs) {
+      sheetObject.appendRow(
+        fieldNames.map((fieldName) {
+          final fieldValue = doc[fieldName];
+
+          if (fieldValue is Timestamp) {
+            return DateFormat('dd MMM yyyy h:mm a').format(fieldValue.toDate());
+          }
+
+          return fieldValue.toString();
+        }).toList(),
+      );
+    }
+
+    // Save the Excel file
+    final attendance = await docRef.get();
+    final filename = DateFormat('dd MMM yyyy h.mm a')
+        .format((attendance['createdAt'] as Timestamp).toDate());
+    final bytes = excel.encode();
+    final blob = html.Blob([bytes]);
+    final url = html.Url.createObjectUrlFromBlob(blob);
+
+    final link = html.AnchorElement(href: url)
+      ..download = 'qr-attendance-$filename.xlsx'
+      ..style.display = 'none';
+
+    html.document.body!.append(link);
+    link.click();
+
+    link.remove();
+    html.Url.revokeObjectUrl(url);
   }
 }
 
@@ -268,10 +323,10 @@ class AttendanceResponseList extends StatelessWidget {
           itemBuilder: (BuildContext context, int index) {
             final response = snapshot.data!.docs[index];
 
-            return Entry.offset(
+            return Entry.opacity(
               key: ValueKey(response.id),
-              xOffset: 100,
-              delay: Duration(milliseconds: 100 * index),
+              // xOffset: 100,
+              // delay: Duration(milliseconds: 100 * index),
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(18),

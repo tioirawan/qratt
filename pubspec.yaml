@@ -48,6 +48,8 @@ dependencies:
   just_audio: ^0.9.31
   reactive_forms: ^14.1.0
   google_fonts: ^4.0.3
+  excel: ^2.0.1
+  universal_html: ^2.0.9
 
 dev_dependencies:
   flutter_test:
